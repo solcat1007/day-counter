@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>纪念日 · Day Counter</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:#fff;color:#333;width:100vw;height:100vh;display:flex;justify-content:center;align-items:center;overflow:hidden}
+#lang-btn{position:fixed;top:20px;left:20px;z-index:100;padding:8px 16px;background:#00BCD4;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;transition:background .2s}
+#lang-btn:hover{background:#0097A7}
+#app{max-width:600px;width:95%;text-align:center}
+h2{font-weight:400;color:#00BCD4;margin-bottom:8px;font-size:22px}
+#subtitle{font-size:13px;color:#aaa;margin-bottom:20px}
+#countdowns{display:flex;flex-direction:column;gap:12px;margin-bottom:20px;max-height:380px;overflow-y:auto;padding-right:4px}
+.event-card{display:flex;align-items:center;gap:16px;padding:16px 20px;background:#f0f8f9;border-radius:12px;border-left:4px solid #00BCD4;transition:all .15s}
+.event-card:hover{background:#e0f7fa}
+.event-card.past{border-left-color:#ddd;opacity:.6}
+.event-emoji{font-size:28px;flex-shrink:0}
+.event-info{flex:1;text-align:left}
+.event-name{font-size:15px;font-weight:500;color:#333}
+.event-date{font-size:12px;color:#888;margin-top:2px}
+.event-countdown{font-size:18px;font-weight:300;color:#00BCD4;flex-shrink:0;text-align:right;min-width:100px}
+.event-card.past .event-countdown{color:#aaa}
+.event-del{width:24px;height:24px;border-radius:50%;background:transparent;color:#ccc;border:none;cursor:pointer;font-size:16px;line-height:24px;text-align:center;flex-shrink:0;transition:all .15s;padding:0}
+.event-del:hover{background:#ffebee;color:#ff5252}
+#add-section{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+#add-section input{padding:10px 14px;border:2px solid #e0f7fa;border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
+#add-section input:focus{border-color:#00BCD4}
+#event-name-input{width:160px}
+#event-date-input{width:150px}
+#event-emoji-input{width:60px;text-align:center}
+#add-btn{padding:10px 20px;background:#00BCD4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-family:inherit;transition:background .2s}
+#add-btn:hover{background:#0097A7}
+#total-days{font-size:13px;color:#aaa;margin-top:16px}
+</style>
+</head>
+<body>
+
+<button id="lang-btn" onclick="toggleLang()" data-key="langBtn">中/EN</button>
+
+<div id="app">
+  <h2 data-key="title">纪念日追踪</h2>
+  <div id="subtitle" data-key="subtitle">记录重要的日子，不再忘记</div>
+
+  <div id="countdowns"></div>
+
+  <div id="add-section">
+    <input type="text" id="event-emoji-input" placeholder="🎂" maxlength="2">
+    <input type="text" id="event-name-input" data-key-placeholder="namePlaceholder" placeholder="事件名称">
+    <input type="date" id="event-date-input">
+    <button id="add-btn" onclick="addEvent()" data-key="add">添加</button>
+  </div>
+
+  <div id="total-days"></div>
+</div>
+
+<script>
+const i18n = {
+  zh: { langBtn:'中/EN', title:'纪念日追踪', subtitle:'记录重要的日子，不再忘记', namePlaceholder:'事件名称', add:'添加',
+    daysLeft:'还有 {0} 天', daysAgo:'已过 {0} 天', today:'今天！', total:'共 {0} 个纪念日' },
+  en: { langBtn:'中/EN', title:'Day Counter', subtitle:'Track important dates', namePlaceholder:'Event name', add:'Add',
+    daysLeft:'{0} days left', daysAgo:'{0} days ago', today:'Today!', total:'{0} events tracked' }
+};
+let lang='zh'; let tk=i18n[lang];
+function toggleLang(){ lang=lang==='zh'?'en':'zh'; tk=i18n[lang]; updateUI(); render(); }
+
+let events=JSON.parse(localStorage.getItem('dayEvents')||'[]');
+
+function updateUI(){ document.querySelectorAll('[data-key]').forEach(el=>{ el.textContent=tk[el.dataset.key]; }); }
+
+function save(){ localStorage.setItem('dayEvents',JSON.stringify(events)); }
+
+function addEvent(){
+  let name=document.getElementById('event-name-input').value.trim();
+  let date=document.getElementById('event-date-input').value;
+  let emoji=document.getElementById('event-emoji-input').value.trim()||'📅';
+  if(!name||!date) return;
+  events.push({name,date,emoji:emoji.slice(0,2)});
+  events.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  save(); render();
+  document.getElementById('event-name-input').value='';
+  document.getElementById('event-date-input').value='';
+  document.getElementById('event-emoji-input').value='';
+}
+
+function removeEvent(idx){ events.splice(idx,1); save(); render(); }
+
+function render(){
+  let div=document.getElementById('countdowns');
+  let today=new Date(); today.setHours(0,0,0,0);
+  div.innerHTML='';
+
+  if(events.length===0){
+    div.innerHTML='<div style="color:#ccc;font-size:14px;padding:40px">'+tk.add+'</div>';
+    document.getElementById('total-days').textContent='';
+    return;
+  }
+
+  events.forEach((ev,idx)=>{
+    let target=new Date(ev.date+'T00:00:00');
+    let diffDays=Math.floor((target-today)/(1000*60*60*24));
+    let isPast=diffDays<0;
+    let dayStr;
+    if(diffDays===0) dayStr=tk.today;
+    else if(isPast) dayStr=tk.daysAgo.replace('{0}',Math.abs(diffDays));
+    else dayStr=tk.daysLeft.replace('{0}',diffDays);
+
+    let card=document.createElement('div');
+    card.className='event-card'+(isPast?' past':'');
+    card.innerHTML=`
+      <span class="event-emoji">${ev.emoji}</span>
+      <div class="event-info">
+        <div class="event-name">${ev.name}</div>
+        <div class="event-date">${ev.date}</div>
+      </div>
+      <span class="event-countdown">${dayStr}</span>
+      <button class="event-del" onclick="removeEvent(${idx})">&times;</button>
+    `;
+    div.appendChild(card);
+  });
+  document.getElementById('total-days').textContent=tk.total.replace('{0}',events.length);
+}
+
+render();
+</script>
+</body>
+</html>
