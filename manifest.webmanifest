@@ -1,0 +1,19 @@
+{
+  "name": "日期计数 · 小工具",
+  "short_name": "日期计数",
+  "description": "计算两个日期间隔天数",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7f9",
+  "theme_color": "#5c6bc0",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
