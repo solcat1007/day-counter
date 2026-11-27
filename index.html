@@ -3,288 +3,578 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>日期计数 · 间隔天数计算</title>
-<meta name="description" content="计算两个日期之间的天数、周数，或从某天到今天过了多久">
+<title>日期计数 · 倒计时管理 v2.0</title>
+<meta name="description" content="管理多个倒计时/正计时，支持分享卡片与两日期间隔计算">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg">
 <meta name="theme-color" content="#5c6bc0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="日期计数">
 <style>
-
 :root{
-  --bg:#f4f5f7;           /* 页面底色：浅灰，避免纯白刺眼 */
-  --bg-glow:#ffffff;      /* 顶部径向光晕色，制造轻微的空间感 */
-  --surface:#ffffff;      /* 卡片底色 */
-  --surface-2:#fafbfc;    /* 卡片内的次级区块（输入框、结果区） */
-  --text:#16181d;         /* 主文字 */
-  --soft:#5d636e;         /* 次要文字 */
-  --mute:#8b929e;         /* 弱化文字（提示、单位、占位符） */
-  --line:#e6e8ec;         /* 分割线与边框 */
-  --accent:#26a69a;       /* 强调色（各玩具不同） */
-  --accent-soft:#e6f4f2;  /* 强调色的浅色版，用于底色块 */
+  --bg:#f4f6f9; --surface:#ffffff; --surface-2:#f7f9fb;
+  --text:#16181d; --soft:#5d636e; --mute:#8b929e; --line:#e6e8ec;
+  --accent:#5c6bc0; --accent-soft:#e9ebf9;
   --r-lg:20px; --r-md:14px; --r-sm:10px;
   --ease:cubic-bezier(.4,0,.2,1);
-  --shadow:0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06);
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);
 }
 *{margin:0;padding:0;box-sizing:border-box}
-
 body{
   font-family:system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
   background:var(--bg);
-  /* 顶部一层极淡光晕，比死板的纯色更有层次 */
-  background-image:radial-gradient(120% 80% at 50% 0%, var(--bg-glow) 0%, rgba(255,255,255,0) 62%);
-  background-attachment:fixed;
-  color:var(--text);
-  min-height:100dvh;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  padding:24px; -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(120% 70% at 50% 0%,var(--accent-soft) 0%,rgba(255,255,255,0) 62%);
+  background-attachment:fixed;color:var(--text);min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;padding:20px 16px 44px;
+  -webkit-font-smoothing:antialiased;
 }
-
-.app{width:100%; max-width:480px; display:flex; flex-direction:column; align-items:center; gap:20px}
-
-.head{text-align:center}
-.head h1{font-size:22px; font-weight:600; letter-spacing:.5px}
-.head p{font-size:13px; color:var(--mute); margin-top:6px}
-
-.card{
-  width:100%; background:var(--surface); border:1px solid var(--line);
-  border-radius:var(--r-lg); padding:22px; box-shadow:var(--shadow);
-}
-
-.stage{
-  width:288px; height:288px; position:relative;
-  background:var(--surface); border:1px solid var(--line);
-  border-radius:50%; box-shadow:var(--shadow);
-  display:flex; align-items:center; justify-content:center;
-}
-.stage canvas{border-radius:50%}
-
-.phase{
-  font-size:29px; font-weight:300; letter-spacing:6px;
-  color:var(--accent); min-height:42px; text-align:center;
-  transition:color .4s var(--ease);
-}
-.cd{font-size:15px; color:var(--soft); font-variant-numeric:tabular-nums; min-height:22px}
-.meta{font-size:13px; color:var(--mute); min-height:20px; text-align:center}
-
-.row{display:flex; gap:10px; flex-wrap:wrap; justify-content:center}
-.stats{display:flex; gap:10px; width:100%}
-.stat{
-  flex:1; background:var(--surface-2); border:1px solid var(--line);
-  border-radius:var(--r-md); padding:12px; text-align:center;
-}
-.stat .k{font-size:11px; color:var(--mute); letter-spacing:1px}
-.stat .v{font-size:21px; font-weight:600; margin-top:3px; font-variant-numeric:tabular-nums}
-
-.chip{
-  padding:9px 18px; font-size:13px; font-weight:500; font-family:inherit;
-  background:var(--surface); color:var(--soft);
-  border:1px solid var(--line); border-radius:999px; cursor:pointer;
-  transition:all .2s var(--ease);
-}
-.chip:hover{border-color:var(--accent); color:var(--accent)}
-.chip.active{
-  background:var(--accent); border-color:var(--accent); color:#fff;
-  box-shadow:0 4px 14px rgba(0,0,0,.14);
-}
-
-.btn{
-  padding:13px 42px; font-size:15px; font-weight:600; font-family:inherit;
-  letter-spacing:3px; background:var(--accent); color:#fff;
-  border:none; border-radius:var(--r-md); cursor:pointer;
-  transition:transform .15s var(--ease), box-shadow .2s var(--ease);
-  box-shadow:0 6px 20px rgba(0,0,0,.16);
-}
-.btn:hover{transform:translateY(-1px)}
-.btn:active{transform:translateY(0)}
-.btn.ghost{background:transparent; border:1px solid var(--line); color:var(--soft); box-shadow:none}
-
+.app{width:100%;max-width:520px;display:flex;flex-direction:column;gap:16px}
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:2px}
+.head h1{font-size:22px;font-weight:700;letter-spacing:.5px}
+.head p{font-size:12px;color:var(--mute);margin-top:5px}
 .lang{
-  position:fixed; top:16px; right:16px; z-index:20;
-  padding:7px 14px; font-size:12px; font-weight:600; font-family:inherit;
-  background:var(--surface); color:var(--soft);
-  border:1px solid var(--line); border-radius:999px; cursor:pointer;
+  flex-shrink:0;padding:7px 14px;font-size:12px;font-weight:600;font-family:inherit;
+  background:var(--surface);color:var(--soft);border:1px solid var(--line);
+  border-radius:999px;cursor:pointer;transition:all .2s var(--ease);
+}
+.lang:hover{border-color:var(--accent);color:var(--accent)}
+.card{
+  width:100%;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-lg);padding:18px;box-shadow:var(--shadow);
+}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input[type=text],input[type=date],select{
+  padding:11px 12px;font-size:14px;font-family:inherit;
+  border:1px solid var(--line);border-radius:var(--r-md);
+  background:var(--surface-2);color:var(--text);min-width:0;
+}
+input:focus,select:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+#evName{flex:1;min-width:110px}
+#evEmoji{width:58px;text-align:center}
+.btn{
+  padding:11px 20px;font-size:14px;font-weight:600;font-family:inherit;
+  background:var(--accent);color:#fff;border:0;border-radius:var(--r-md);cursor:pointer;
+}
+.btn.ghost{background:var(--surface);border:1px solid var(--line);color:var(--soft)}
+.chip{
+  padding:8px 13px;font-size:12px;font-family:inherit;background:var(--surface);
+  color:var(--soft);border:1px solid var(--line);border-radius:999px;cursor:pointer;
   transition:all .2s var(--ease);
 }
-.lang:hover{border-color:var(--accent); color:var(--accent)}
-
-.hint{font-size:12px; color:var(--mute); text-align:center; line-height:1.7}
-
-@media (max-width:380px){
-  .stage{width:250px;height:250px}
-  .phase{font-size:25px; letter-spacing:4px}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.evlist{display:flex;flex-direction:column;gap:10px}
+.ev{
+  position:relative;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow);overflow:hidden;
 }
-
-:root{ --accent:#5c6bc0; --accent-soft:#e9ebf9; }
-
-.dfield{margin-bottom:14px}
-.dfield label{display:block; font-size:12px; color:var(--mute); margin-bottom:6px; letter-spacing:1px}
-input[type=date]{
-  width:100%; padding:12px 14px; font-size:16px; font-family:inherit;
-  border:1px solid var(--line); border-radius:var(--r-md);
-  background:var(--surface-2); color:var(--text);
-}
-input[type=date]:focus{outline:none; border-color:var(--accent); background:var(--surface)}
-.big{text-align:center; padding:20px 0 8px}
-.big .n{font-size:52px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-1px}
-.big .u{font-size:14px; color:var(--mute); margin-top:4px}
-
+.ev::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+.ev.past::before{background:var(--mute)}
+.ev-hd{display:flex;align-items:center;gap:10px}
+.ev-emoji{font-size:24px;flex-shrink:0}
+.ev-name{flex:1;font-size:15px;font-weight:600;word-break:break-all}
+.ev-date{font-size:12px;color:var(--mute)}
+.ev-body{display:flex;align-items:flex-end;justify-content:space-between;margin-top:14px;gap:10px}
+.ev-num{font-size:44px;font-weight:700;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.ev.past .ev-num{color:var(--mute)}
+.ev-unit{font-size:13px;color:var(--mute);margin-left:6px}
+.ev-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.mini{background:none;border:1px solid var(--line);border-radius:8px;color:var(--mute);
+  font-size:12px;padding:6px 9px;cursor:pointer}
+.mini:hover{border-color:var(--accent);color:var(--accent)}
+.mini.danger:hover{border-color:#ef5350;color:#ef5350}
+.empty{font-size:12px;color:var(--mute);text-align:center;padding:18px 0}
+details.card summary{cursor:pointer;font-size:14px;font-weight:600;list-style:none}
+details.card summary::-webkit-details-marker{display:none}
+details.card[open] summary{margin-bottom:14px}
+.dfield{margin-bottom:12px}
+.dfield label{display:block;font-size:12px;color:var(--mute);margin-bottom:6px;letter-spacing:1px}
+.dfield input{width:100%}
+.big{text-align:center;padding:12px 0}
+.big .n{font-size:44px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.big .u{font-size:13px;color:var(--mute);margin-top:3px}
+.stats{display:flex;gap:8px}
+.stat{flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-md);padding:10px;text-align:center}
+.stat .k{font-size:11px;color:var(--mute)}
+.stat .v{font-size:18px;font-weight:600;margin-top:3px}
+.hint{font-size:12px;color:var(--mute);text-align:center;line-height:1.7}
+.overlay{position:fixed;inset:0;background:rgba(16,18,24,.72);z-index:1001;display:none;
+  align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+.overlay.show{display:flex}
+.sheet{background:var(--surface);border-radius:var(--r-lg);padding:18px;width:100%;max-width:380px;text-align:center}
+.sheet canvas{width:100%;border-radius:var(--r-md);display:block;margin-bottom:14px}
+.sheet .row{justify-content:center}
+.toast{position:fixed;left:50%;bottom:32px;transform:translate(-50%,20px);background:rgba(22,24,29,.92);
+  color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;z-index:1002;opacity:0;
+  pointer-events:none;transition:all .25s var(--ease)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
 </style>
 </head>
 <body>
-<button class="lang" id="langBtn" onclick="toggleLang()">EN</button>
 <div class="app">
-
   <div class="head">
-    <h1 id="t_title">日期计数</h1>
+    <div><h1 id="t_title">日期计数</h1><p id="t_sub">多个倒计时 · 正数/倒数切换 · 分享卡片</p></div>
+    <button class="lang" id="langBtn" onclick="toggleLang()">EN</button>
   </div>
 
   <div class="card">
-    <div class="dfield">
-      <label id="t_a">开始日期</label>
-      <input type="date" id="d1" onchange="calc()">
+    <div class="row" style="margin-bottom:12px">
+      <select id="modeSel" onchange="refresh()">
+        <option value="down" id="m_down">默认倒数</option>
+        <option value="up" id="m_up">默认正数</option>
+      </select>
     </div>
-    <div class="dfield" style="margin-bottom:0">
-      <label id="t_b">结束日期</label>
-      <input type="date" id="d2" onchange="calc()">
+    <div class="row">
+      <input type="text" id="evName" placeholder="事件名称…" maxlength="24">
+      <input type="text" id="evEmoji" placeholder="🎂" maxlength="4">
+      <input type="date" id="evDate">
+      <button class="btn" onclick="addEvent()">+</button>
     </div>
   </div>
 
-  <div class="card">
-    <div class="big">
-      <div class="n" id="n">0</div>
-      <div class="u" id="u">天</div>
-    </div>
-    <div class="stats" style="margin-top:14px">
+  <div class="evlist" id="evlist"></div>
+
+  <details class="card">
+    <summary id="t_calcTitle">▸ 两日期间隔计算</summary>
+    <div class="dfield"><label id="t_a">开始日期</label><input type="date" id="d1" onchange="calc()"></div>
+    <div class="dfield"><label id="t_b">结束日期</label><input type="date" id="d2" onchange="calc()"></div>
+    <div class="big"><div class="n" id="n">0</div><div class="u" id="u">天</div></div>
+    <div class="stats">
       <div class="stat"><div class="k" id="t_w">折合周</div><div class="v" id="vW">0</div></div>
       <div class="stat"><div class="k" id="t_m">折合月</div><div class="v" id="vM">0</div></div>
       <div class="stat"><div class="k" id="t_y">折合年</div><div class="v" id="vY">0</div></div>
     </div>
-  </div>
+    <div class="row" style="margin-top:14px">
+      <button class="chip" onclick="setToday('d2')">今天</button>
+      <button class="chip" onclick="swapDates()">⇅ 交换</button>
+    </div>
+  </details>
 
-  <div class="row">
-    <button class="btn ghost" onclick="setToday('d2')">结束设为今天</button>
-    <button class="btn ghost" onclick="swapDates()">交换</button>
-  </div>
-
-  <div class="hint" id="t_hint">负数表示结束日期早于开始日期</div>
-
+  <div class="hint" id="t_hint">点击卡片上的「倒数/正数」切换计数方向</div>
 </div>
-<script>
 
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeShare()">
+  <div class="sheet">
+    <canvas id="shareCanvas" width="750" height="1000"></canvas>
+    <div class="row">
+      <button class="btn" onclick="saveShare()">⇩ <span id="t_saveImg">保存图片</span></button>
+      <button class="btn ghost" onclick="copyShare()">⧉ <span id="t_copyText">复制文案</span></button>
+      <button class="btn ghost" onclick="closeShare()">✕</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
 /* ============================================================
- * 日期计数
+ * 日期计数 v2.0
  * ------------------------------------------------------------
- * 关键陷阱：不要用 (d2 - d1) / 86400000 直接算天数。
- *   因为夏令时会让某些"一天"只有 23 小时或 25 小时，
- *   相减再除会除出小数，向下取整就少算一天。
- *
- * 正确做法：用 Date.UTC() 把两个日期都归一化到 UTC 零点的时间戳，
- *   这样每天严格等于 86400000 毫秒，差值整除即得准确天数。
+ * 日期差用 Date.UTC() 归一化到 UTC 零点，避免夏令时造成小数天。
+ * v2.0 新增：多个倒计时管理、倒数/正数切换、Canvas 分享卡片。
+ * 原「两日期间隔计算」保留在折叠面板中。
  * ========================================================== */
 
-const d1El = document.getElementById('d1');
-const d2El = document.getElementById('d2');
+const KEY = 'day_counter_v2';
+let events = [], shareTarget = null;
 
 const I18N = {
-  zh:{ title:'日期计数', hint:'负数表示结束日期早于开始日期',
+  zh:{ title:'日期计数', sub:'多个倒计时 · 正数/倒数切换 · 分享卡片',
+       hint:'点击卡片上的「倒数/正数」切换计数方向', calcTitle:'▸ 两日期间隔计算',
        a:'开始日期', b:'结束日期', day:'天', week:'折合周', month:'折合月', year:'折合年',
-       today:'结束设为今天', swap:'交换', need:'请先选择两个日期' },
-  en:{ title:'Day Counter', hint:'Negative means the end date is before the start',
-       a:'Start date', b:'End date', day:'days', week:'Weeks', month:'Months', year:'Years',
-       today:'Set end to today', swap:'Swap', need:'Please pick both dates' }
+       need:'请先选择两个日期', ph:'事件名称…', empty:'还没有倒计时，添加一个吧',
+       down:'倒数', up:'正数', downUnit:'天后', upUnit:'天前', todayDay:'就是今天',
+       saveImg:'保存图片', copyText:'复制文案', copied:'文案已复制', saved:'图片已保存',
+       m_down:'默认倒数', m_up:'默认正数', share:'分享', del:'删除' },
+  en:{ title:'Day Counter', sub:'Multiple countdowns · Up/down mode · Share card',
+       hint:'Tap the mode chip on a card to switch countdown direction',
+       calcTitle:'▸ Date difference', a:'Start date', b:'End date', day:'days',
+       week:'Weeks', month:'Months', year:'Years', need:'Pick both dates',
+       ph:'Event name...', empty:'No countdowns yet', down:'Until', up:'Since',
+       downUnit:'days left', upUnit:'days ago', todayDay:'Today!',
+       saveImg:'Save image', copyText:'Copy text', copied:'Text copied', saved:'Image saved',
+       m_down:'Default: countdown', m_up:'Default: count up', share:'Share', del:'Delete' }
 };
 let lang = 'zh';
 
-/** 按本地日期取出 yyyy-mm-dd 字符串（避免 toISOString 的时区偏移） */
+function load(){
+  try{ events = JSON.parse(localStorage.getItem(KEY)) || []; }catch(e){ events = []; }
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(events)); }catch(e){} }
+
 function todayStr(){
   const d = new Date();
-  const m = String(d.getMonth()+1).padStart(2,'0');
-  const day = String(d.getDate()).padStart(2,'0');
-  return d.getFullYear() + '-' + m + '-' + day;
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
-
-/** 把 yyyy-mm-dd 解析成 UTC 零点的毫秒时间戳 */
 function toUTC(s){
   const p = s.split('-');
   return Date.UTC(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
 }
+function diffDays(dateStr){ return Math.round((toUTC(dateStr) - toUTC(todayStr())) / 86400000); }
 
-/** 计算差值并刷新展示 */
-function calc(){
-  const a = d1El.value, b = d2El.value;
-  const nEl = document.getElementById('n');
-  const uEl = document.getElementById('u');
+function addEvent(){
+  const name = document.getElementById('evName').value.trim();
+  const date = document.getElementById('evDate').value;
+  if (!name || !date){ toast(I18N[lang].need); return; }
+  const emoji = document.getElementById('evEmoji').value.trim() || '📅';
+  events.push({
+    id:Date.now()+Math.random(), name:name, date:date, emoji:emoji,
+    mode:document.getElementById('modeSel').value
+  });
+  document.getElementById('evName').value = '';
+  document.getElementById('evEmoji').value = '';
+  save(); render();
+}
+function toggleMode(id){
+  events.forEach(function(e){ if (e.id === id) e.mode = e.mode === 'down' ? 'up' : 'down'; });
+  save(); render();
+}
+function removeEvent(id){ events = events.filter(function(e){ return e.id !== id; }); save(); render(); }
 
-  if (!a || !b){
-    nEl.textContent = '0';
-    uEl.textContent = I18N[lang].need;
-    setStats(0,0,0);
-    return;
+function render(){
+  const box = document.getElementById('evlist');
+  box.innerHTML = '';
+  if (!events.length){
+    const d = document.createElement('div'); d.className = 'empty';
+    d.textContent = I18N[lang].empty; box.appendChild(d); return;
   }
+  const sorted = events.slice().sort(function(a,b){ return Math.abs(diffDays(a.date)) - Math.abs(diffDays(b.date)); });
+  sorted.forEach(function(ev){
+    const raw = diffDays(ev.date);
+    const val = ev.mode === 'down' ? -raw : raw;
+    const isToday = raw === 0;
+    const card = document.createElement('div');
+    card.className = 'ev' + (raw < 0 ? ' past' : '');
 
-  // 两个 UTC 零点时间戳相减，必然是 86400000 的整数倍
-  const days = Math.round((toUTC(b) - toUTC(a)) / 86400000);
+    const hd = document.createElement('div'); hd.className = 'ev-hd';
+    const em = document.createElement('span'); em.className = 'ev-emoji'; em.textContent = ev.emoji;
+    const nm = document.createElement('span'); nm.className = 'ev-name'; nm.textContent = ev.name;
+    const dt = document.createElement('span'); dt.className = 'ev-date'; dt.textContent = ev.date;
+    hd.appendChild(em); hd.appendChild(nm); hd.appendChild(dt);
 
-  nEl.textContent = days;
-  uEl.textContent = I18N[lang].day;
+    const body = document.createElement('div'); body.className = 'ev-body';
+    const nums = document.createElement('div');
+    const big = document.createElement('span'); big.className = 'ev-num';
+    big.textContent = isToday ? '0' : Math.abs(val);
+    const unit = document.createElement('span'); unit.className = 'ev-unit';
+    unit.textContent = isToday ? I18N[lang].todayDay
+      : (ev.mode === 'down' ? I18N[lang].downUnit : I18N[lang].upUnit);
+    nums.appendChild(big); nums.appendChild(unit);
 
-  const ad = Math.abs(days);
-  setStats(
-    (ad/7).toFixed(1),
-    (ad/30.44).toFixed(1),      /* 平均月长 365.25/12 */
-    (ad/365.25).toFixed(2)
-  );
+    const acts = document.createElement('div'); acts.className = 'ev-actions';
+    const modeBtn = document.createElement('button'); modeBtn.className = 'mini';
+    modeBtn.textContent = ev.mode === 'down' ? I18N[lang].down : I18N[lang].up;
+    modeBtn.onclick = function(){ toggleMode(ev.id); };
+    const shareBtn = document.createElement('button'); shareBtn.className = 'mini';
+    shareBtn.textContent = '⧉ ' + I18N[lang].share;
+    shareBtn.onclick = function(){ openShare(ev, raw); };
+    const delBtn = document.createElement('button'); delBtn.className = 'mini danger';
+    delBtn.textContent = '×';
+    delBtn.title = I18N[lang].del;
+    delBtn.onclick = function(){ removeEvent(ev.id); };
+    acts.appendChild(modeBtn); acts.appendChild(shareBtn); acts.appendChild(delBtn);
+
+    body.appendChild(nums); body.appendChild(acts);
+    card.appendChild(hd); card.appendChild(body);
+    box.appendChild(card);
+  });
 }
 
+/* ---------- 分享卡片 ---------- */
+function openShare(ev, raw){
+  shareTarget = { ev:ev, raw:raw };
+  const c = document.getElementById('shareCanvas');
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const g = ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,'#5c6bc0'); g.addColorStop(1,'#26a69a');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  ctx.globalAlpha = .10; ctx.fillStyle = '#fff';
+  [[120,140,190],[660,820,240],[620,180,100],[100,880,130]].forEach(function(a){
+    ctx.beginPath(); ctx.arc(a[0],a[1],a[2],0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1; ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+  ctx.font = '80px system-ui, sans-serif';
+  ctx.fillText(ev.emoji || '📅', W/2, 270);
+  ctx.font = 'bold 48px system-ui, sans-serif';
+  ctx.fillText(ev.name.slice(0,16), W/2, 390);
+  ctx.font = 'bold 190px system-ui, sans-serif';
+  ctx.fillText(String(Math.abs(raw)), W/2, 640);
+  ctx.font = '40px system-ui, sans-serif';
+  ctx.fillText(raw === 0 ? I18N[lang].todayDay
+    : (ev.mode === 'down' ? I18N[lang].downUnit : I18N[lang].upUnit), W/2, 720);
+  ctx.font = '30px system-ui, sans-serif'; ctx.globalAlpha = .85;
+  ctx.fillText(ev.date, W/2, 800);
+  ctx.font = '24px system-ui, sans-serif'; ctx.globalAlpha = .7;
+  ctx.fillText('SOLCAT · Day Counter v2.0', W/2, 950);
+  ctx.globalAlpha = 1;
+  document.getElementById('overlay').classList.add('show');
+}
+function closeShare(){ document.getElementById('overlay').classList.remove('show'); }
+function saveShare(){
+  if (!shareTarget) return;
+  const c = document.getElementById('shareCanvas');
+  const a = document.createElement('a');
+  a.href = c.toDataURL('image/png');
+  a.download = (shareTarget.ev.name || 'countdown') + '.png';
+  a.click();
+  toast(I18N[lang].saved);
+}
+function copyShare(){
+  if (!shareTarget) return;
+  const ev = shareTarget.ev, raw = shareTarget.raw;
+  const text = ev.emoji + ' ' + ev.name + '\n' + ev.date + '\n' +
+    (raw === 0 ? I18N[lang].todayDay : Math.abs(raw) + ' ' +
+     (ev.mode === 'down' ? I18N[lang].downUnit : I18N[lang].upUnit)) +
+    '\n—— SOLCAT 日期计数';
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ toast(I18N[lang].copied); }, fallback);
+  } else fallback();
+  function fallback(){
+    const ta = document.createElement('textarea'); ta.value = text;
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta); toast(I18N[lang].copied);
+  }
+}
+
+/* ---------- 原两日期间隔计算 ---------- */
+const d1El = document.getElementById('d1');
+const d2El = document.getElementById('d2');
+function calc(){
+  const a = d1El.value, b = d2El.value;
+  const nEl = document.getElementById('n'), uEl = document.getElementById('u');
+  if (!a || !b){
+    nEl.textContent = '0'; uEl.textContent = I18N[lang].need;
+    setStats(0,0,0); return;
+  }
+  const days = Math.round((toUTC(b) - toUTC(a)) / 86400000);
+  nEl.textContent = days; uEl.textContent = I18N[lang].day;
+  const ad = Math.abs(days);
+  setStats((ad/7).toFixed(1), (ad/30.44).toFixed(1), (ad/365.25).toFixed(2));
+}
 function setStats(w,m,y){
   document.getElementById('vW').textContent = w;
   document.getElementById('vM').textContent = m;
   document.getElementById('vY').textContent = y;
 }
-
 function setToday(id){ document.getElementById(id).value = todayStr(); calc(); }
+function swapDates(){ const a = d1El.value; d1El.value = d2El.value; d2El.value = a; calc(); }
 
-function swapDates(){
-  const a = d1El.value;
-  d1El.value = d2El.value;
-  d2El.value = a;
-  calc();
+let toastTimer = null;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = '☠ ' + msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 1600);
 }
 
 function refresh(){
   const L = I18N[lang];
   document.getElementById('t_title').textContent = L.title;
-  document.getElementById('t_hint').textContent  = L.hint;
-  document.getElementById('t_a').textContent     = L.a;
-  document.getElementById('t_b').textContent     = L.b;
-  document.getElementById('u').textContent       = L.day;
-  document.getElementById('t_w').textContent     = L.week;
-  document.getElementById('t_m').textContent     = L.month;
-  document.getElementById('t_y').textContent     = L.year;
+  document.getElementById('t_sub').textContent = L.sub;
+  document.getElementById('t_hint').textContent = L.hint;
+  document.getElementById('t_calcTitle').textContent = L.calcTitle;
+  document.getElementById('t_a').textContent = L.a;
+  document.getElementById('t_b').textContent = L.b;
+  document.getElementById('t_w').textContent = L.week;
+  document.getElementById('t_m').textContent = L.month;
+  document.getElementById('t_y').textContent = L.year;
+  document.getElementById('t_saveImg').textContent = L.saveImg;
+  document.getElementById('t_copyText').textContent = L.copyText;
+  document.getElementById('m_down').textContent = L.m_down;
+  document.getElementById('m_up').textContent = L.m_up;
+  document.getElementById('evName').placeholder = L.ph;
+  document.getElementById('u').textContent = L.day;
   document.getElementById('langBtn').textContent = (lang==='zh') ? 'EN' : '中';
+  render(); calc();
 }
 function toggleLang(){ lang = (lang==='zh') ? 'en' : 'zh'; refresh(); }
 
-/* 默认给个区间：今天 ~ 30 天后，进来就能看到结果 */
+/* 专属彩蛋入口：添加隐藏倒计时 */
+window.__DC_EGG__ = function(){
+  const d = new Date(Date.now() + 42*86400000);
+  const s = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  events.push({ id:Date.now(), name:'☠ 彩蛋日', date:s, emoji:'☠',
+    mode:document.getElementById('modeSel').value });
+  save(); render(); toast('☠ 隐藏倒计时已添加：42 天后');
+};
+
+load();
 d1El.value = todayStr();
 const t30 = new Date(Date.now() + 30*86400000);
-d2El.value = t30.getFullYear() + '-' +
-  String(t30.getMonth()+1).padStart(2,'0') + '-' +
-  String(t30.getDate()).padStart(2,'0');
-
+d2El.value = t30.getFullYear()+'-'+String(t30.getMonth()+1).padStart(2,'0')+'-'+String(t30.getDate()).padStart(2,'0');
 refresh();
-calc();
 
-/* ---------- PWA 注册 ----------
- * 注册 Service Worker 后本页被缓存，断网也能打开。
- * 放在最后且 catch 掉异常：即使浏览器不支持也不影响正常功能。 */
 if ('serviceWorker' in navigator){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('./sw.js').catch(function(){});
   });
 }
+</script>
+<!-- SOLCAT EASTER EGG PROTOCOL v2.0 -->
+<script>
+/* ============================================================
+ * SOLCAT EASTER EGG PROTOCOL v2.0 — 通用彩蛋引擎
+ * 零依赖 · 单文件 · 可注入任意 HTML 项目
+ * ============================================================ */
+(function(){
+  'use strict';
+  if (window.__SOLCAT_EGG__) return;
+  window.__SOLCAT_EGG__ = { version:'2.0', unlocked:new Set(), onUnlock:[] };
+
+  var E = window.__SOLCAT_EGG__;
+  var KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  var seq = [], logoClicks = 0, logoTimer = null;
+
+  /* ---------- 1. 控制台署名（ASCII Art） ---------- */
+  function banner(){
+    var art = '%c\n  ____             _   _       _   _   \n' +
+      ' / ___|  ___  _ __| |_(_) __ _| |_| |__  \n' +
+      ' \\___ \\ / _ \\| \'__| __| |/ _` | __| \'_ \\ \n' +
+      '  ___) | (_) | |  | |_| | (_| | |_| | | |\n' +
+      ' |____/ \\___/|_|   \\__|_|\\__,_|\\__|_| |_|\n';
+    console.log(art, 'color:#26a69a;font-family:monospace;font-weight:bold');
+    console.log('%c☠ SOLCAT EASTER EGG PROTOCOL v2.0 — 你找到了隐藏入口',
+      'color:#666;font-size:11px;letter-spacing:1px');
+    console.log('%c提示：↑↑↓↓←→←→BA · 连点标题 5 次 · 输入 solcat · Ctrl+Shift+T',
+      'color:#999;font-size:10px');
+  }
+
+  /* ---------- 2. 烟花彩带粒子 ---------- */
+  function confetti(){
+    var colors = ['#26a69a','#42a5f5','#ef5350','#ffca28','#ab47bc','#66bb6a','#ff7043'];
+    var cvs = document.createElement('canvas');
+    cvs.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:99999';
+    document.body.appendChild(cvs);
+    var ctx = cvs.getContext('2d'), W = cvs.width = innerWidth, H = cvs.height = innerHeight;
+    var P = [];
+    for (var i=0;i<180;i++) P.push({
+      x:W/2+(Math.random()-.5)*120, y:H*.4+(Math.random()-.5)*40,
+      vx:(Math.random()-.5)*18, vy:-Math.random()*16-4,
+      c:colors[i%colors.length], s:Math.random()*8+4, r:Math.random()*6,
+      life:1, spin:(Math.random()-.5)*.3
+    });
+    var f = 0;
+    (function draw(){
+      f++; ctx.clearRect(0,0,W,H);
+      P.forEach(function(p){
+        p.x+=p.vx; p.y+=p.vy; p.vy+=.35; p.vx*=.99; p.r+=p.spin; p.life-=.006;
+        if(p.life<=0) return;
+        ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r); ctx.globalAlpha=p.life;
+        ctx.fillStyle=p.c; ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6); ctx.restore();
+      });
+      if (f<180) requestAnimationFrame(draw); else cvs.remove();
+    })();
+  }
+
+  /* ---------- 3. 隐藏开发者面板 ---------- */
+  function devPanel(app){
+    var old = document.getElementById('__egg_panel');
+    if (old){ old.remove(); return; }
+    var d = document.createElement('div');
+    d.id='__egg_panel';
+    d.style.cssText='position:fixed;bottom:20px;right:20px;z-index:99998;width:280px;'+
+      'background:rgba(18,20,26,.94);color:#e0e0e0;border:1px solid #26a69a;border-radius:14px;'+
+      'padding:18px;font:12px/1.7 ui-monospace,monospace;backdrop-filter:blur(12px);'+
+      'box-shadow:0 12px 40px rgba(0,0,0,.4);animation:eggIn .3s ease';
+    d.innerHTML='<div style="color:#26a69a;font-weight:bold;font-size:13px;margin-bottom:10px">'+
+      '☠ SOLCAT 开发者模式</div>'+
+      '<div>应用　　: '+app+'</div>'+
+      '<div>协议　　: EGG PROTOCOL v'+E.version+'</div>'+
+      '<div>解锁数　: '+E.unlocked.size+'</div>'+
+      '<div>UA　　　: '+(navigator.userAgent.slice(0,38))+'…</div>'+
+      '<div>屏幕　　: '+innerWidth+'×'+innerHeight+'</div>'+
+      '<div>运行时间: '+Math.round(performance.now()/1000)+'s</div>'+
+      '<div style="color:#888;margin-top:10px;border-top:1px solid #333;padding-top:8px">'+
+      '已解锁: '+Array.from(E.unlocked).join(', ')+'</div>'+
+      '<button onclick="this.parentNode.remove()" style="margin-top:12px;width:100%;padding:6px;'+
+      'background:#26a69a;color:#fff;border:0;border-radius:6px;cursor:pointer">关闭</button>';
+    document.body.appendChild(d);
+  }
+
+  /* ---------- 4. 隐藏主题（赛博朋克） ---------- */
+  function cyberTheme(){
+    var s=document.getElementById('__egg_cyber');
+    if(s){ s.remove(); document.body.classList.remove('egg-cyber'); return; }
+    s=document.createElement('style'); s.id='__egg_cyber';
+    s.textContent='body.egg-cyber{filter:invert(1) hue-rotate(180deg)!important;}'+
+      'body.egg-cyber *{font-family:"Courier New",monospace!important;letter-spacing:1px}';
+    document.head.appendChild(s); document.body.classList.add('egg-cyber');
+    unlock('cyber','☠ 赛博模式已启用');
+  }
+
+  /* ---------- 5. 解锁分发 ---------- */
+  function unlock(id,msg){
+    if (E.unlocked.has(id)) return;
+    E.unlocked.add(id);
+    if (msg) console.log('%c[EGG] '+msg,'color:#ffca28;font-weight:bold');
+    E.onUnlock.forEach(function(fn){ try{fn(id);}catch(e){} });
+    var t=document.createElement('div');
+    t.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);'+
+      'z-index:99997;background:rgba(18,20,26,.92);color:#ffca28;padding:18px 28px;'+ 
+      'border:1px solid #ffca28;border-radius:12px;font:14px ui-monospace,monospace;'+
+      'pointer-events:none;animation:eggIn .3s ease;box-shadow:0 8px 30px rgba(0,0,0,.4)';
+    t.textContent='☠ '+msg;
+    document.body.appendChild(t); setTimeout(function(){t.remove();},2200);
+  }
+
+  /* ---------- 6. 事件绑定 ---------- */
+  function init(){
+    var app = document.title || 'SOLCAT App';
+    banner();
+
+    // Konami 秘籍
+    addEventListener('keydown', function(e){
+      var k = e.key.length===1 ? e.key.toLowerCase() : e.key;
+      seq.push(k); if(seq.length>KONAMI.length) seq.shift();
+      if (seq.length===KONAMI.length && KONAMI.every(function(v,i){return seq[i]===v;})){
+        seq=[]; confetti(); unlock('konami','KONAMI CODE 已激活！');
+      }
+      // Ctrl+Shift+T → 赛博主题
+      if (e.ctrlKey && e.shiftKey && (e.key==='T'||e.key==='t')){
+        e.preventDefault(); cyberTheme();
+      }
+      // 输入 solcat
+      if (e.key==='Enter' && window.__eggBuf__ === 'solcat'){ cyberTheme(); window.__eggBuf__=''; }
+      if (k.length===1) window.__eggBuf__ = ((window.__eggBuf__||'')+k).slice(-10);
+    });
+
+    // 连点标题 5 次 → 开发者面板
+    addEventListener('DOMContentLoaded', function(){
+      var targets = document.querySelectorAll('h1,.head h1,.logo,header h1');
+      var t = targets[0];
+      if(t){ t.style.cursor='default'; t.addEventListener('click',function(){
+        logoClicks++;
+        clearTimeout(logoTimer);
+        logoTimer=setTimeout(function(){logoClicks=0;},900);
+        if(logoClicks>=5){ logoClicks=0; devPanel(app); unlock('dev','开发者模式已解锁'); }
+      });}
+      // 给 body 加动画 keyframe
+      var a=document.createElement('style');
+      a.textContent='@keyframes eggIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}';
+      document.head.appendChild(a);
+    });
+
+    console.log('%c☠ 彩蛋引擎已加载 — 祝你玩得开心','color:#26a69a');
+  }
+
+  if (document.readyState==='loading') addEventListener('DOMContentLoaded',init);
+  else init();
+})();
+
+</script>
+<script>
+(function(){
+  var E = window.__SOLCAT_EGG__;
+  if (!E) return;
+
+    var fired = false;
+    E.onUnlock.push(function(id){
+      if (fired || ['konami','dev','cyber'].indexOf(id) < 0) return;
+      fired = true;
+      window.__DC_EGG__();
+    });
+})();
 </script>
 </body>
 </html>
