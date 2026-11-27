@@ -1,7 +1,8 @@
 {
+  "version": "2.0.0",
   "name": "日期计数 · 小工具",
   "short_name": "日期计数",
-  "description": "计算两个日期间隔天数",
+  "description": "多倒计时管理、正数倒数切换与分享卡片 v2.0",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
